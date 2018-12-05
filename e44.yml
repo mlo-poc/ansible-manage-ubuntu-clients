@@ -1,0 +1,15 @@
+---
+- hosts: E44
+  remote_user: root
+  tasks:
+  - name: Run the equivalent of "apt-get update" as a separate step
+    apt:
+     update_cache: yes
+  - name: Update all packages to the latest version
+    apt:
+     upgrade: dist
+     dpkg_options: 'force-confold,force-confdef'
+  - name: Remove dependencies that are no longer required
+    apt:
+     autoremove: yes
+
