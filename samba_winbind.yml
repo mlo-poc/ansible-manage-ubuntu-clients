@@ -1,0 +1,46 @@
+# Dieses Playbook bindet einen Ubuntu-Client an die IServ-Domäne an.
+---
+- hosts: test 
+  remote_user: root
+  tasks:
+  - name: Installiere alle erforderlichen Pakete für die Samba-Anbindung
+    apt:
+     name: "{{ packages }}"
+    vars:
+     packages:
+     - winbind
+     - libpam-winbind
+     - libnss-winbind
+     - cifs-utils
+     - libpam-mount
+  - name: Kopieren der Konfigurationsdateien
+    copy:
+     src: "{{ item.src }}"
+     dest: "{{ item.dest }}"
+     owner: root
+     group: root
+     mode: 0644
+    with_items:
+     - src: "./data/winbind/smb.conf"
+       dest: "/etc/samba/smb.conf"
+     - src: "./data/winbind/pam_mount.conf.xml"
+       dest: "/etc/security/pam_mount.conf.xml"
+     - src: "./data/winbind/nsswitch.conf"
+       dest: "/etc/nsswitch.conf"
+     - src: "./data/winbind/50-ubuntu-mate.conf"
+       dest: "/usr/share/lightdm/lightdm.conf.d/50-ubuntu-mate.conf"
+     - src: "./data/winbind/rc.local"
+       dest: "/etc/rc.local"
+     - src: "./data/winbind/winbind.service"
+       dest: "/etc/systemd/system/multi-user.target.wants/winbind.service"
+  - name: rc.local ausführbar machen
+    file:
+      path: /etc/rc.local
+      state: touch
+      mode: u=rwx,g=rx,o=rx
+  - name: Beitritt zur Samba-Domäne
+    shell: echo -n 'D6G!sZyo!Qb4DEXd3C?' | net rpc join -U felix.schoppe
+  - name: Restart service winbind, in all cases
+    service:
+     name: winbind
+     state: restarted

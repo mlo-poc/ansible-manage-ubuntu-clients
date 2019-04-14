@@ -1,0 +1,8 @@
+---
+- hosts: E31
+  remote_user: root
+  tasks:
+  - name: Install google chrome from the Internet
+    apt:
+     deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+

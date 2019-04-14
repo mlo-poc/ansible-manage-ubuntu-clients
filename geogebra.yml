@@ -1,0 +1,8 @@
+---
+- hosts: test
+  remote_user: root
+  tasks:
+  - name: Install GeoGebra
+    apt:
+     deb: http://www.geogebra.net/linux/pool/main/g/geogebra-classic/geogebra-classic_6.0.523.0-201901280948_amd64.deb
+

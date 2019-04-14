@@ -1,0 +1,20 @@
+---
+- hosts: test
+  remote_user: root
+  tasks:
+  - name: Installiere die Programme! 
+    apt:
+     name: "{{ packages }}"
+    vars:
+     packages:
+     - android-sdk
+     - remmina
+     - scratch
+     - gimp
+     - inkscape
+     - x11vnc
+     - arduino
+     - musescore
+     - uncrustify
+     - android-sdk  
+     #- openscad

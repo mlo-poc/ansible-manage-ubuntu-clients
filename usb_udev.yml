@@ -1,0 +1,14 @@
+---
+- hosts: E31 
+  remote_user: root
+  tasks:
+  - name: Kopieren der Konfigurationsdateien
+    copy:
+     src: "{{ item.src }}"
+     dest: "{{ item.dest }}"
+     owner: root
+     group: root
+     mode: 0644
+    with_items:
+     - src: "./data/udev/50-myusb.rules"
+       dest: "/etc/udev/rules.d/50-myusb.rules"

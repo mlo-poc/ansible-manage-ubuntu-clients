@@ -14,3 +14,4 @@
      autoremove: yes
   - name: generate new disk image
     command: ./systemupdate.sh
+

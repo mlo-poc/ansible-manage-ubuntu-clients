@@ -1,0 +1,19 @@
+---
+- hosts: E31 
+  remote_user: root
+  tasks:
+  - name: app ppa für Android Studio
+    apt_repository:
+      validate_certs: no
+      repo: 'ppa:maarten-fonville/android-studio'
+      state: present
+  - name: Run the equivalent of "apt-get update" as a separate step
+    apt:
+      update_cache: yes
+  - name: Installiere die Programme! 
+    apt:
+      name: "{{ packages }}"
+    vars:
+      packages:
+      - android-studio
+

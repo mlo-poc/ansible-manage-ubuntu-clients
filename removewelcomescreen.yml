@@ -1,0 +1,7 @@
+---
+- hosts: Laptopwagen1
+  remote_user: root
+  tasks:
+  - name: remove welcome screen
+    command: rm /usr/lib/gnome-initial-setup/gnome-initial-setup
+

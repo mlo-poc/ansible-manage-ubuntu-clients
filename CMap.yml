@@ -1,0 +1,39 @@
+# Dieses Playbook installiert CmapTools
+---
+- hosts: terminalserver 
+  remote_user: root
+  tasks:
+  - name: CMap nach /usr/local/bin/ entpacken
+    unarchive:
+     src: "{{ item.src }}"
+     dest: "{{ item.dest }}"
+    with_items:
+     - src: "./data/cmap.zip"
+       dest: "/usr/local/bin/"
+  - name: Berechtigungen 755 korrekt setzen
+    file:
+      path: /usr/local/bin/cmap/
+      state: directory
+      recurse: yes
+      owner: root
+      group: root
+      mode: 0755
+  - name: CMap korrekt ausführbar machen
+    file:
+      path: /usr/local/bin/cmap/CMapTools
+      state: touch
+      mode: u=rwx,g=rx,o=rx
+  - name: Desktop-Starter-Datei kopieren
+    copy:
+      src: ./data/cmap.desktop
+      dest: /usr/share/applications/
+      owner: root
+      group: root
+      mode: 0644
+  - name: Icon-Datei kopieren
+    copy:
+      src: ./data/cmap-logo.png
+      dest: /usr/local/bin/cmap/cmap-logo.png
+      owner: root
+      group: root
+      mode: 0644

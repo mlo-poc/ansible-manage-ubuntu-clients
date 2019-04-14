@@ -1,0 +1,22 @@
+---
+- hosts: E31
+  remote_user: root
+  tasks:
+  - name: Neue rc.local und winbind.service kopieren
+    copy:
+     src: "{{ item.src }}"
+     dest: "{{ item.dest }}"
+     owner: root
+     group: root
+     mode: 0644
+    with_items:
+     - src: "./data/winbind/rc.local"
+       dest: "/etc/rc.local"
+       #Diese Konfigurationsdatei ist nur bei Ubuntu 18.04 LTS vorhanden
+       #     - src: "./data/winbind/winbind.service"
+       #       dest: "/etc/systemd/system/multi-user.target.wants/winbind.service"
+  - name: Neue rc.local ausführbar machen
+    file:
+      path: /etc/rc.local
+      state: touch
+      mode: u=rwx,g=rx,o=rx

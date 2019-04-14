@@ -1,0 +1,46 @@
+---
+- hosts: Laptopwagen2 
+  remote_user: root
+  tasks:
+  - name: Archiv entpacken
+    unarchive:
+     src: "{{ item.src }}"
+     dest: "{{ item.dest }}"
+    with_items:
+     - src: "./data/binaries.tar.xz"
+       dest: "/usr/local/bin/"
+  - name: nbc ausführbar machen
+    file:
+      path: /usr/local/bin/nbc
+      state: touch
+      mode: u=rwx,g=rx,o=rx
+  - name: nexttool ausführbar machen
+    file:
+      path: /usr/local/bin/nexttool
+      state: touch
+      mode: u=rwx,g=rx,o=rx
+  - name: wavrsocvt ausführbar machen
+    file:
+      path: /usr/local/bin/wavrsocvt
+      state: touch
+      mode: u=rwx,g=rx,o=rx
+  - name: copy nbc.1 
+    copy:
+      src: ./data/nbc/nbc.1
+      dest: /usr/share/man/man1/
+      owner: root
+      group: root
+      mode: 0644
+  - name: copy nxc.lang
+    copy:
+      src: ./data/nbc/nxc.lang
+      dest: /usr/share/gtksourceview-3.0/language-specs/
+      owner: root
+      group: root
+      mode: 0644
+  - name: Gruppe nxt erstellen
+    command: addgroup legonxt
+  - name: gbg zur Gruppe nxt hinzufügen
+    command: adduser gbg legonxt
+  - name: udev-Regel erstellen
+    command: echo 'SUBSYSTEM=="usb", ACTION=="add", ATTR{idVendor}=="0694", ATTR{idProduct}=="0002", SYMLINK+="legonxt-%k", GROUP="legonxt", MODE="0660"'  >> /etc/udev/rules.d/45-legonxt.rules

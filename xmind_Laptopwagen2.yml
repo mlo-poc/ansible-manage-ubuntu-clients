@@ -1,0 +1,8 @@
+---
+- hosts: Laptopwagen2
+  remote_user: root
+  tasks:
+  - name: Install xmind from the internet
+    apt:
+     deb: https://dl3.xmind.net/XMind-ZEN-for-Linux-64bit.deb
+

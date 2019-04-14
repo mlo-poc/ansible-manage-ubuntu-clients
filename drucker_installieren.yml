@@ -1,0 +1,16 @@
+---
+- hosts: E30 
+  remote_user: root
+  tasks:
+  - name: Kopieren der PPD-Drucker-Datei
+    copy:
+     src: "{{ item.src }}"
+     dest: "{{ item.dest }}"
+     owner: root
+     group: root
+     mode: 0644
+    with_items:
+     - src: "./data/Drucker/kyocera.ppd"
+       dest: "/root/kyocera.ppd"
+  - name: Drucker installieren
+    command: lpadmin -p Kyocera -E -v socket://10.1.30.100 -P /root/kyocera.ppd

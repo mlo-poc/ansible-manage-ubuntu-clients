@@ -1,5 +1,5 @@
 ---
-- hosts: E44
+- hosts: Neubau
   remote_user: root
   tasks:
   - name: Run the equivalent of "apt-get update" as a separate step

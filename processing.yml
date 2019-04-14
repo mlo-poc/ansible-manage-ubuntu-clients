@@ -1,0 +1,31 @@
+---
+- hosts: E30 
+  remote_user: root
+  tasks:
+  - name: Processing entpacken
+    unarchive:
+     src: "{{ item.src }}"
+     dest: "{{ item.dest }}"
+    with_items:
+     - src: "./data/processing-3.5.2-linux64.tgz"
+       dest: "/usr/local/share/"
+  - name: Berechtigungen 755 korrekt setzen
+    file:
+      path: /usr/local/share/processing-3.5.2
+      state: directory
+      recurse: yes
+      owner: root
+      group: root
+      mode: 0755
+  - name: Datei ausführbar machen
+    file:
+      path: /usr/local/share/processing-3.5.2/processing
+      state: touch
+      mode: u=rwx,g=rx,o=rx
+  - name: Desktop-Starter-Datei kopieren
+    copy:
+      src: ./data/processing.desktop
+      dest: /usr/share/applications/
+      owner: root
+      group: root
+      mode: 0644

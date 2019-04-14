@@ -1,0 +1,8 @@
+---
+- hosts: E30
+  remote_user: root
+  tasks:
+  - name: Install filius from the internet
+    apt:
+     deb: http://www.lernsoftware-filius.de/downloads/filius_1.7.2_all.deb 
+
