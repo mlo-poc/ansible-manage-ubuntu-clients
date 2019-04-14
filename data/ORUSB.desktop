@@ -1,0 +1,10 @@
+
+[Desktop Entry]
+Version=3.1.0
+Name=Open Roberta USB
+Exec=java -jar -Dfile.encoding=utf-8 /usr/local/share/OpenRobertaUSB/OpenRobertaUSB.jar
+Path=/usr/local/share/OpenRobertaUSB/
+Icon=/usr/local/share/OpenRobertaUSB/OR.png
+Terminal=false
+Type=Application
+Categories=Application;Development;
