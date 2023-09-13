@@ -1,0 +1,7 @@
+---
+- hosts: INFacerWLAN
+  remote_user: root
+  tasks:
+  - name: Ping all hosts and Induce an exception to see what happens
+    ping:
+     data: crash
