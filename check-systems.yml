@@ -85,26 +85,30 @@
 
     - name: Lese die Liste der erforderlichen Pakete aus der Datei
       slurp:
-        src: data/required_packages
+        src: data/required-packages
+      delegate_to: localhost
       register: required_packages_file
 
     - name: Setze die Liste der erforderlichen Pakete
       set_fact:
-        required_packages: "{{ required_packages_file.content | b64decode | splitlines }}"
+        required_packages: "{{ required_packages_file.content | b64decode | split('\n') }}"
+
+    - name: Sammle Paketfakten
+      package_facts:
 
     - name: Überprüfe installierte Pakete
-      command: dpkg -l | grep -E '{{ item }}'
-      register: installed_packages
-      ignore_errors: yes
+      set_fact:
+        installed_packages: "{{ installed_packages | default([]) + [item] if item in ansible_facts.packages else installed_packages | default([]) }}"
       loop: "{{ required_packages }}"
 
     - name: Zeige installierte Pakete an
       debug:
-        msg: "Installierte Pakete: {{ installed_packages.results | map(attribute='stdout') | join(', ') }}"
+        msg: "Installierte Pakete: {{ installed_packages | join(', ') }}"
 
     - name: Lese die lokale sources.list Datei
       slurp:
         src: data/etc/apt/sources.list
+      delegate_to: localhost
       register: local_sources_list
 
     - name: Lese die remote sources.list Datei
