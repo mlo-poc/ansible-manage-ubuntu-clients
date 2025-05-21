@@ -128,3 +128,23 @@
           {% else %}
             Die sources.list Dateien stimmen NICHT überein.
           {% endif %}
+
+
+    - name: Erstelle CSV-Eintrag für den Host
+      set_fact:
+        csv_entry: >
+          {{ inventory_hostname }},
+          {{ 'active' if nm_status.stdout == 'active' else 'inactive' }},
+          {{ installed_packages | join(', ') }},
+          {{ 'poweroff' if lid_switch.stdout == 'HandleLidSwitch=poweroff' else lid_switch.stdout }},
+          {{ 'auto' if 'auto wlan0' in wifi_auto.stdout else 'manual' }},
+          {{ 'configurable' if apt_update_result.rc == 0 else 'not configurable' }},
+          {{ sources_list_match }}
+
+    - name: Schreibe CSV-Eintrag in Datei
+      lineinfile:
+        path: /tmp/results.csv
+        line: "{{ csv_entry }}"
+        create: yes
+        state: present
+      delegate_to: localhost
