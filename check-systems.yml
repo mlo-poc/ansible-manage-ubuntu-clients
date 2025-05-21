@@ -1,0 +1,96 @@
+---
+- name: Untersuche den aktuellen Zustand der Systeme
+  hosts: INFacerWLAN
+  remote_user: root
+  tasks:
+    - name: Überprüfe die Aktion beim Schließen des Laptopdeckels
+      command: grep -i "HandleLidSwitch" /etc/systemd/logind.conf
+      register: lid_switch
+      ignore_errors: yes
+
+    - name: Prüfe, ob die Einstellung 'HandleLidSwitch' auf 'poweroff' gesetzt ist
+      debug:
+        msg: >
+          {% if lid_switch.stdout == 'HandleLidSwitch=poweroff' %}
+            Die Aktion beim Schließen des Laptopdeckels ist korrekt eingestellt: poweroff.
+          {% else %}
+            Die Aktion beim Schließen des Laptopdeckels ist nicht korrekt eingestellt: {{ lid_switch.stdout }}.
+          {% endif %}
+
+    - name: Überprüfe die WLAN-Verbindung beim Hochfahren
+      command: grep -i "auto" /etc/network/interfaces
+      register: wifi_auto
+      ignore_errors: yes
+
+    - name: Prüfe, ob die WLAN-Verbindung zur automatischen Verbindung konfiguriert ist
+      debug:
+        msg: >
+          {% if 'auto wlan0' in wifi_auto.stdout %}
+            Die WLAN-Verbindung ist zur automatischen Verbindung konfiguriert.
+          {% else %}
+            Die WLAN-Verbindung ist nicht zur automatischen Verbindung konfiguriert.
+          {% endif %}
+
+    - name: Überprüfe, ob NetworkManager aktiv ist
+      command: systemctl is-active NetworkManager
+      register: nm_status
+      ignore_errors: yes
+
+    - name: Prüfe den Status von NetworkManager
+      debug:
+        msg: >
+          {% if nm_status.stdout == 'active' %}
+            NetworkManager ist aktiv.
+          {% else %}
+            NetworkManager ist nicht aktiv: {{ nm_status.stdout }}.
+          {% endif %}
+
+    - name: Überprüfe den Speicherplatz der /var-Partition
+      command: df -h /var
+      register: var_disk_usage
+
+    - name: Extrahiere die Belegung der /var-Partition
+      set_fact:
+        var_usage: "{{ var_disk_usage.stdout_lines[1].split()[4] | regex_replace('%','') | int }}"
+
+    - name: Überprüfe, ob der Speicherplatz über 80% liegt
+      debug:
+        msg: >
+          {% if var_usage > 80 %}
+            Die /var-Partition ist zu voll mit {{ var_usage }}%.
+          {% else %}
+            Die /var-Partition hat ausreichend Speicherplatz.
+          {% endif %}
+
+    - name: Überprüfe, ob apt korrekt funktioniert
+      command: apt update
+      register: apt_update_result
+      ignore_errors: yes
+
+    - name: Überprüfen des Ergebnisses von apt update
+      debug:
+        msg: >
+          {% if apt_update_result.rc == 0 %}
+            Der Rechner {{ inventory_hostname }} ist konfigurierbar.
+          {% else %}
+            Der Rechner {{ inventory_hostname }} ist NICHT konfigurierbar. Fehler: {{ apt_update_result.stderr }}
+          {% endif %}
+
+    - name: Lese die Liste der erforderlichen Pakete aus der Datei
+      slurp:
+        src: data/required_packages
+      register: required_packages_file
+
+    - name: Setze die Liste der erforderlichen Pakete
+      set_fact:
+        required_packages: "{{ required_packages_file.content | b64decode | splitlines }}"
+
+    - name: Überprüfe installierte Pakete
+      command: dpkg -l | grep -E '{{ item }}'
+      register: installed_packages
+      ignore_errors: yes
+      loop: "{{ required_packages }}"
+
+    - name: Zeige installierte Pakete an
+      debug:
+        msg: "Installierte Pakete: {{ installed_packages.results | map(attribute='stdout') | join(', ') }}"
