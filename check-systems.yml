@@ -1,6 +1,8 @@
 ---
 - name: Untersuche den aktuellen Zustand der Systeme
-  hosts: INFacerWLAN
+  vars:
+    target_group: "{{ target_group | default('INFacerWLAN') }}"
+  hosts: "{{ target_group }}"
   remote_user: root
   tasks:
     - name: Überprüfe die Aktion beim Schließen des Laptopdeckels
