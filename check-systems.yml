@@ -94,3 +94,26 @@
     - name: Zeige installierte Pakete an
       debug:
         msg: "Installierte Pakete: {{ installed_packages.results | map(attribute='stdout') | join(', ') }}"
+
+    - name: Lese die lokale sources.list Datei
+      slurp:
+        src: data/etc/apt/sources.list
+      register: local_sources_list
+
+    - name: Lese die remote sources.list Datei
+      slurp:
+        src: /etc/apt/sources.list
+      register: remote_sources_list
+
+    - name: Vergleiche die sources.list Dateien
+      set_fact:
+        sources_list_match: "{{ local_sources_list.content | b64decode == remote_sources_list.content | b64decode }}"
+
+    - name: Zeige das Ergebnis des Vergleichs der sources.list Dateien an
+      debug:
+        msg: >
+          {% if sources_list_match %}
+            Die sources.list Dateien stimmen überein.
+          {% else %}
+            Die sources.list Dateien stimmen NICHT überein.
+          {% endif %}
