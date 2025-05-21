@@ -5,11 +5,6 @@
   hosts: "{{ target_group }}"
   remote_user: root
   tasks:
-    - name: Schalte Geräte per Wake-on-LAN ein
-      wakeonlan:
-        mac: "{{ ansible_default_ipv4.macaddress }}"
-      delegate_to: localhost
-      ignore_errors: yes
     - name: Überprüfe die Aktion beim Schließen des Laptopdeckels
       command: grep -i "HandleLidSwitch" /etc/systemd/logind.conf
       register: lid_switch
@@ -134,6 +129,7 @@
       set_fact:
         csv_entry: >
           {{ inventory_hostname }},
+          {{ var_usage }},
           {{ 'active' if nm_status.stdout == 'active' else 'inactive' }},
           {{ installed_packages | join(', ') }},
           {{ 'poweroff' if lid_switch.stdout == 'HandleLidSwitch=poweroff' else lid_switch.stdout }},
