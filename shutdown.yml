@@ -1,0 +1,11 @@
+---
+- name: Remote-Rechner herunterfahren
+  hosts: INFacerWLAN
+  remote_user: root  # Stelle sicher, dass du den richtigen Benutzer angibst
+  tasks:
+    - name: Herunterfahren des Remote-Rechners
+      command: shutdown -h now
+      # Alternativ kannst du auch das systemd-Modul verwenden:
+      # systemd:
+      #   name: shutdown
+      #   state: stopped

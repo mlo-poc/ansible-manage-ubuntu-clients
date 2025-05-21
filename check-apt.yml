@@ -1,0 +1,18 @@
+---
+- hosts: INFacerWLAN  # Ersetze 'all' durch die gewünschte Host-Gruppe
+  remote_user: root
+  tasks:
+  - name: Überprüfen, ob apt korrekt funktioniert
+    command: apt update
+    register: apt_update_result
+    ignore_errors: yes  # Ignoriere Fehler, um die Überprüfung fortzusetzen
+
+  - name: Überprüfen des Ergebnisses von apt update
+    debug:
+      msg: "Der Rechner {{ inventory_hostname }} ist konfigurierbar."
+    when: apt_update_result.rc == 0
+
+  - name: Fehlerausgabe, wenn apt nicht funktioniert
+    debug:
+      msg: "Der Rechner {{ inventory_hostname }} ist NICHT konfigurierbar. Fehler: {{ apt_update_result.stderr }}"
+    when: apt_update_result.rc != 0

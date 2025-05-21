@@ -1,0 +1,17 @@
+---
+- hosts: INFacerWLAN
+  remote_user: root
+  tasks:
+  - name: Copy sources.list file from local to remote
+    ansible.builtin.copy:
+       src: data/etc/apt/sources.list
+       dest: /etc/apt/sources.list
+       owner: root
+       group: root
+       mode: 0644
+#  - name: Only run update_cache=yes if the last one is more than 1 seconds ago
+#    apt:
+#      update_cache: yes
+#      cache_valid_time: 1
+  - name: Run apt update as command because update_cache seems broken
+    command: apt update

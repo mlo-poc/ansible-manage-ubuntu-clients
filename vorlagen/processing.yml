@@ -1,5 +1,5 @@
 ---
-- hosts: E30 
+- hosts: gwaihir 
   remote_user: root
   tasks:
   - name: Processing entpacken
@@ -7,7 +7,7 @@
      src: "{{ item.src }}"
      dest: "{{ item.dest }}"
     with_items:
-     - src: "./data/processing-3.5.2-linux64.tgz"
+     - src: "./packages/TigerJython.tar.gz"
        dest: "/usr/local/share/"
   - name: Berechtigungen 755 korrekt setzen
     file:

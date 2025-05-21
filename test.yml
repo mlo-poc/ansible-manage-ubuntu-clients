@@ -1,0 +1,14 @@
+---
+- name: Beispiel Playbook mit ansible_user in vars
+  hosts: INFacerWLAN
+  vars:
+    ansible_user: root
+
+  tasks:
+    - name: Führe einen Befehl aus
+      command: whoami
+      register: result
+
+    - name: Zeige den Benutzer an
+      debug:
+        msg: "Der aktuelle Benutzer ist: {{ result.stdout }}"

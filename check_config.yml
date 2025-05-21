@@ -1,0 +1,48 @@
+---
+- name: Überprüfe grundlegende Konfigurationen
+  hosts: INFacerWLAN
+  vars:
+    ansible_user: root
+
+  tasks:
+    - name: Überprüfe die Aktion beim Schließen des Laptopdeckels
+      command: grep -i "HandleLidSwitch" /etc/systemd/logind.conf
+      register: lid_switch
+      ignore_errors: yes
+
+    - name: Prüfe, ob die Einstellung 'HandleLidSwitch' auf 'poweroff' gesetzt ist
+      debug:
+        msg: >
+          {% if lid_switch.stdout == 'HandleLidSwitch=poweroff' %}
+            Die Aktion beim Schließen des Laptopdeckels ist korrekt eingestellt: poweroff.
+          {% else %}
+            Die Aktion beim Schließen des Laptopdeckels ist nicht korrekt eingestellt: {{ lid_switch.stdout }}.
+          {% endif %}
+
+    - name: Überprüfe die WLAN-Verbindung beim Hochfahren
+      command: grep -i "auto" /etc/network/interfaces
+      register: wifi_auto
+      ignore_errors: yes
+
+    - name: Prüfe, ob die WLAN-Verbindung zur automatischen Verbindung konfiguriert ist
+      debug:
+        msg: >
+          {% if 'auto wlan0' in wifi_auto.stdout %}
+            Die WLAN-Verbindung ist zur automatischen Verbindung konfiguriert.
+          {% else %}
+            Die WLAN-Verbindung ist nicht zur automatischen Verbindung konfiguriert.
+          {% endif %}
+
+    - name: Überprüfe, ob NetworkManager aktiv ist
+      command: systemctl is-active NetworkManager
+      register: nm_status
+      ignore_errors: yes
+
+    - name: Prüfe den Status von NetworkManager
+      debug:
+        msg: >
+          {% if nm_status.stdout == 'active' %}
+            NetworkManager ist aktiv.
+          {% else %}
+            NetworkManager ist nicht aktiv: {{ nm_status.stdout }}.
+          {% endif %}

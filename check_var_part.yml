@@ -1,0 +1,34 @@
+---
+- hosts: INFacerWLAN
+  remote_user: root
+  tasks:
+  - name: Überprüfe den Speicherplatz auf der /var-Partition
+    command: df -h /var
+    register: var_disk_usage
+
+  - name: Extrahiere die Belegung der /var-Partition
+    set_fact:
+      var_usage: "{{ var_disk_usage.stdout_lines[1].split()[4] | regex_replace('%','') | int }}"
+
+  - name: Überprüfe, ob der Speicherplatz über 80% liegt
+    fail:
+      msg: "Die /var-Partition ist zu voll mit {{ var_usage }}%."
+    when: var_usage > 80
+
+  - name: Bereinige alte Logdateien
+    command: find /var/log -type f -name '*.log' -mtime +30 -exec rm -f {} \;
+    when: var_usage > 80
+    register: cleanup_logs
+
+  - name: Bereinige alte temporäre Dateien
+    command: find /var/tmp -type f -mtime +30 -exec rm -f {} \;
+    when: var_usage > 80
+    register: cleanup_temp
+
+  - name: Zeige Bereinigungsbericht an
+    debug:
+      msg: |
+        Bereinigung durchgeführt:
+        - Alte Logdateien gelöscht: {{ cleanup_logs.rc == 0 }}
+        - Alte temporäre Dateien gelöscht: {{ cleanup_temp.rc == 0 }}
+    when: var_usage > 80

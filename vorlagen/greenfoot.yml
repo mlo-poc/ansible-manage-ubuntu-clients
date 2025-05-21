@@ -1,0 +1,8 @@
+---
+- hosts: E30
+  remote_user: root
+  tasks:
+  - name: Install greenfoot from the internet
+    apt:
+     deb: http://www.greenfoot.org/download/files/Greenfoot-linux-353.deb 
+

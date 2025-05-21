@@ -1,0 +1,21 @@
+---
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: Read users from CSV file and return a list
+      read_csv:
+        path: data/2023-08-31_import-neue-laptops.csv
+        fieldnames: name,mac,ip
+        delimiter: ';'
+      register: machines
+      delegate_to: localhost
+#    - name: Print data
+#      debug:
+#        msg: "{{ item.mac }}"
+#      loop: "{{ machines.list }}"
+    - name: Send a magic Wake-on-LAN packet to Laptop Lan interfaces
+      wakeonlan:
+        mac: "{{ item.mac }}"
+      loop: "{{ machines.list }}"
+      delegate_to: localhost
+

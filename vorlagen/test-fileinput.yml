@@ -1,0 +1,10 @@
+---
+- hosts: localhost
+  connection: local
+  tasks:
+  - name: display multiple file contents
+    debug: msg={{ item }}
+    with_file:
+      - "/etc/ansible/hosts"
+
+

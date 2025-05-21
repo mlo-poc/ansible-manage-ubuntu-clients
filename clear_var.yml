@@ -1,0 +1,40 @@
+---
+- name: Überprüfe und bereinige die /var-Partition
+  hosts: INFacerWLAN
+  remote_user: root
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+  tasks:
+    - name: Überprüfe den Speicherplatz der /var-Partition
+      command: df --output=pcent /var | tail -1
+      register: var_disk_usage
+
+    - name: Extrahiere die Nutzung der /var-Partition
+      set_fact:
+        var_usage: "{{ var_disk_usage.stdout.strip().replace('%', '') | int }}"
+
+    - name: Lösche unwichtige Dateien, wenn die Nutzung über 80% liegt
+      block:
+        - name: Lösche alte Log-Dateien
+          file:
+            path: "/var/log/*.log"
+            state: absent
+          when: var_usage > 80  # Hier wird die Umwandlung in int direkt im Vergleich angewendet
+
+        - name: Lösche temporäre Dateien
+          file:
+            path: "/var/tmp/*"
+            state: absent
+          when: var_usage > 80  # Hier wird die Umwandlung in int direkt im Vergleich angewendet
+
+        - name: Lösche Cache-Dateien
+          command: apt-get clean
+          when: var_usage > 80  # Hier wird die Umwandlung in int direkt im Vergleich angewendet
+
+        - name: Lösche nicht mehr benötigte Pakete
+          command: apt-get autoremove -y
+          when: var_usage > 80  # Hier wird die Umwandlung in int direkt im Vergleich angewendet
+
+    - name: Informiere über den aktuellen Status der /var-Partition
+      debug:
+        msg: "Die Nutzung der /var-Partition beträgt {{ var_usage }}%."

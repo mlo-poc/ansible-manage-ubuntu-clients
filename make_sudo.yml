@@ -1,0 +1,23 @@
+---
+- name: Füge Benutzer mlo zur sudoers Datei hinzu
+  hosts: INFacerWLAN
+  remote_user: root
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+  tasks:
+    - name: Überprüfe, ob der Benutzer mlo existiert
+      ansible.builtin.user:
+        name: mlo
+        state: present
+
+    - name: Füge Benutzer mlo zur sudoers Datei hinzu
+      lineinfile:
+        path: /etc/sudoers
+        line: 'mlo ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'  # Überprüfe die Syntax der sudoers-Datei
+      notify: 
+        - sudoers neu laden
+
+  handlers:
+    - name: sudoers neu laden
+      command: /usr/sbin/service sudo restart
