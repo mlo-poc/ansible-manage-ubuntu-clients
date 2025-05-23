@@ -28,15 +28,16 @@
           IdleAction=ignore
           PowerKeyIgnoreInhibited=no
           LidSwitchIgnoreInhibited=no
+      register: logind_conf_update
       when: not config_correct
 
     - name: Überprüfen der dconf-Berechtigungen
       command: ls -altR /etc/dconf
       register: dconf_permissions
 
-    - name: Setzen der Berechtigungen für die dconf-Datenbankdatei 00_power-button
-      command: chmod 644 /etc/dconf/db/local.d/00_power-button
-      when: dconf_permissions.stdout.find('00_power-button') != -1
+    - name: Setzen der Berechtigungen für die dconf-Datenbankdatei 00-power-settings
+      command: chmod 644 /etc/dconf/db/local.d/00-power-settings
+      when: dconf_permissions.stdout.find('00-power-settings') != -1
 
     - name: Setzen der Berechtigungen für die dconf-Datenbank
       command: chmod 600 /etc/dconf/db/local
@@ -46,89 +47,53 @@
       command: chmod 600 /etc/dconf/db/site
       when: dconf_permissions.stdout.find('site') != -1
 
-    - name: Erstellen der dconf-Konfigurationsdatei
+    - name: Kopieren der dconf-Konfigurationsdatei
       copy:
-        dest: /etc/dconf/db/local.d/00_power-button
-        content: |
-          [org/cinnamon/settings-daemon/plugins/power]
-          button-power='poweroff'
-          lid-close-ac-action='poweroff'
-          lid-close-battery-action='poweroff'
-      notify: update dconf database
+        src: data/etc/dconf/db/local.d/00-power-settings
+        dest: /etc/dconf/db/local.d/00-power-settings
 
     - name: Zurücksetzen der Benutzereinstellungen für power
       command: dconf reset -f /org/cinnamon/settings-daemon/plugins/power/
       become: no
       ignore_errors: yes  # Ignoriere Fehler, wenn der Benutzer nicht existiert
 
-    - name: Erstellen des Shutdown-Skripts
+    - name: Kopieren des Shutdown-Skripts
       copy:
+        src: data/etc/local.bin/shutdown-lid.sh
         dest: /usr/local/bin/shutdown-lid.sh
-        content: |
-          #!/bin/bash
-          
-          # Überprüfen, ob der Deckel geschlossen ist
-          if grep -q closed /proc/acpi/button/lid/LID0/state; then
-              # 30 Sekunden warten
-              sleep 30
-          
-              # Überprüfen, ob der Deckel während der Wartezeit geöffnet wurde
-              if grep -q open /proc/acpi/button/lid/LID0/state; then
-                  exit 0
-              fi
-          
-              # Andernfalls herunterfahren
-              shutdown now
-          fi
         mode: '0755'
-      when: not config_correct
 
-    - name: Erstellen des systemd-Dienstes für das Shutdown-Skript
+    - name: Kopieren des Setup-Skripts
       copy:
+        src: data/etc/local.bin/setup-power-settings.sh
+        dest: /usr/local/bin/setup-power-settings.sh
+        mode: '0755'
+
+    - name: Kopieren des systemd-Dienstes für das Shutdown-Skript
+      copy:
+        src: data/etc/systemd/system/lid-shutdown.service
         dest: /etc/systemd/system/lid-shutdown.service
-        content: |
-          [Unit]
-          Description=Shutdown on lid close
-          
-          [Service]
-          Type=oneshot
-          ExecStart=/usr/local/bin/shutdown-lid.sh
-          
-          [Install]
-          WantedBy=suspend.target
-      when: not config_correct
 
-    - name: Aktivieren des systemd-Dienstes
+    - name: Kopieren des systemd-Dienstes für das Setup-Skript
+      copy:
+        src: data/etc/systemd/system/setup-power-settings.service
+        dest: /etc/systemd/system/setup-power-settings.service
+
+    - name: Aktivieren des systemd-Dienstes für das Shutdown-Skript
       command: systemctl enable lid-shutdown.service
-      when: not config_correct
 
-    - name: Neustart des Systems
-      reboot:
-      when: not config_correct
-
-    - name: Herunterfahren des Systems, wenn keine Änderungen erforderlich sind
-      command: shutdown now
-      when: config_correct
-
-    - name: Sicherstellen, dass die dconf-Datenbank aktualisiert wird
-      command: dconf update
-
-    - name: Setzen der gsettings für den Netzschalter auf "poweroff"
-      command: gsettings set org.cinnamon.settings-daemon.plugins.power button-power 'poweroff'
-      become: no
-      ignore_errors: yes  # Ignoriere Fehler, wenn der Benutzer nicht existiert
-
-    - name: Setzen der gsettings für das Schließen des Deckels (AC)
-      command: gsettings set org.cinnamon.settings-daemon.plugins.power lid-close-ac-action 'poweroff'
-      become: no
-      ignore_errors: yes  # Ignoriere Fehler, wenn der Benutzer nicht existiert
-
-    - name: Setzen der gsettings für das Schließen des Deckels (Batterie)
-      command: gsettings set org.cinnamon.settings-daemon.plugins.power lid-close-battery-action 'poweroff'
-      become: no
-      ignore_errors: yes  # Ignoriere Fehler, wenn der Benutzer nicht existiert
+    - name: Aktivieren des systemd-Dienstes für das Setup-Skript
+      command: systemctl enable setup-power-settings.service
 
   handlers:
     - name: update dconf database
       command: dconf update
 
+  post_tasks:
+    - name: Neustart des Systems, wenn Änderungen vorgenommen wurden
+      reboot:
+      when: logind_conf_update.changed
+
+    - name: Herunterfahren des Systems, wenn keine Änderungen erforderlich sind
+      command: shutdown now
+      when: not logind_conf_update.changed

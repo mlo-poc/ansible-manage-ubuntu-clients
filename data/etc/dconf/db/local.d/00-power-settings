@@ -1,0 +1,13 @@
+[org/cinnamon/settings-daemon/plugins/power]
+button-hibernate='nothing'
+button-power='shutdown'
+button-suspend='nothing'
+critical-battery-action='shutdown'
+lid-close-ac-action='shutdown'
+lid-close-battery-action='shutdown'
+lid-close-suspend-with-external-monitor=false
+percentage-action=3
+percentage-critical=4
+percentage-low=10
+sleep-inactive-ac-type='nothing'
+sleep-inactive-battery-type='nothing'

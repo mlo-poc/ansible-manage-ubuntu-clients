@@ -1,0 +1,9 @@
+[Unit]
+Description=Shutdown on lid close
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/shutdown-lid.sh
+
+[Install]
+WantedBy=suspend.target
