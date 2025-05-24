@@ -1,7 +1,7 @@
 # Projekt: LFS-Ansible
 
 LFS-Ansible wurde erstellt um die Verwaltung und Konfiguration von
-Linux-Systemen in der [LFS](https://www.liebfrauenschule.de/) zu
+Linux-Systemen[1] in der [LFS](https://www.liebfrauenschule.de/) zu
 automatisieren. [Ansible](https://docs.ansible.com/ansible/latest/index.html)
 ist ein 
 leistungsstarkes Open-Source-Tool, das es ermöglicht, Systeme zu
@@ -114,3 +114,5 @@ Suche nach
     target_group: "{{ target_group | default('INFacerWLAN') }}"
   hosts: "{{ target_group }}"
 ```
+
+[1]: Es ist mit ansible auch möglich [Windows](https://docs.ansible.com/ansible/latest/os_guide/intro_windows.html) zu steuern. Das wird vermutlich ein Thema für die Zukunft, wenn wir unsere IT [virtualisieren](https://docs.ansible.com/ansible/latest/collections/community/general/proxmox_module.html).
