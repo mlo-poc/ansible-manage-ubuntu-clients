@@ -1,146 +1,181 @@
 ---
-- name: Untersuche den aktuellen Zustand der Systeme
+- name: Check and Repair System Configurations
   vars:
     target_group: "{{ target_group | default('INFacerWLAN') }}"
+    backup_dir: "backup/{{ inventory_hostname }}"
+    timestamp: "{{ ansible_date_time.iso8601 }}"
   hosts: "{{ target_group }}"
   remote_user: root
   tasks:
-    - name: Überprüfe die Aktion beim Schließen des Laptopdeckels
-      command: grep -i "HandleLidSwitch" /etc/systemd/logind.conf
-      register: lid_switch
-      ignore_errors: yes
-
-    - name: Prüfe, ob die Einstellung 'HandleLidSwitch' auf 'poweroff' gesetzt ist
-      debug:
-        msg: >
-          {% if lid_switch.stdout == 'HandleLidSwitch=poweroff' %}
-            Die Aktion beim Schließen des Laptopdeckels ist korrekt eingestellt: poweroff.
-          {% else %}
-            Die Aktion beim Schließen des Laptopdeckels ist nicht korrekt eingestellt: {{ lid_switch.stdout }}.
-          {% endif %}
-
-    - name: Überprüfe die WLAN-Verbindung beim Hochfahren
-      command: grep -i "auto" /etc/network/interfaces
-      register: wifi_auto
-      ignore_errors: yes
-
-    - name: Prüfe, ob die WLAN-Verbindung zur automatischen Verbindung konfiguriert ist
-      debug:
-        msg: >
-          {% if 'auto wlan0' in wifi_auto.stdout %}
-            Die WLAN-Verbindung ist zur automatischen Verbindung konfiguriert.
-          {% else %}
-            Die WLAN-Verbindung ist nicht zur automatischen Verbindung konfiguriert.
-          {% endif %}
-
-    - name: Überprüfe, ob NetworkManager aktiv ist
-      command: systemctl is-active NetworkManager
-      register: nm_status
-      ignore_errors: yes
-
-    - name: Prüfe den Status von NetworkManager
-      debug:
-        msg: >
-          {% if nm_status.stdout == 'active' %}
-            NetworkManager ist aktiv.
-          {% else %}
-            NetworkManager ist nicht aktiv: {{ nm_status.stdout }}.
-          {% endif %}
-
-    - name: Überprüfe den Speicherplatz der /var-Partition
-      command: df -h /var
-      register: var_disk_usage
-
-    - name: Extrahiere die Belegung der /var-Partition
-      set_fact:
-        var_usage: "{{ var_disk_usage.stdout_lines[1].split()[4] | regex_replace('%','') | int }}"
-
-    - name: Überprüfe, ob der Speicherplatz über 80% liegt
-      debug:
-        msg: >
-          {% if var_usage > 80 %}
-            Die /var-Partition ist zu voll mit {{ var_usage }}%.
-          {% else %}
-            Die /var-Partition hat ausreichend Speicherplatz.
-          {% endif %}
-
-    - name: Überprüfe, ob apt korrekt funktioniert
-      command: apt update
-      register: apt_update_result
-      ignore_errors: yes
-
-    - name: Überprüfen des Ergebnisses von apt update
-      debug:
-        msg: >
-          {% if apt_update_result.rc == 0 %}
-            Der Rechner {{ inventory_hostname }} ist konfigurierbar.
-          {% else %}
-            Der Rechner {{ inventory_hostname }} ist NICHT konfigurierbar. Fehler: {{ apt_update_result.stderr }}
-          {% endif %}
-
-    - name: Lese die Liste der erforderlichen Pakete aus der Datei
+    - name: Load required packages from file
       slurp:
         src: data/required-packages
       delegate_to: localhost
       register: required_packages_file
 
-    - name: Setze die Liste der erforderlichen Pakete
+    - name: Set required_packages variable
       set_fact:
         required_packages: "{{ required_packages_file.content | b64decode | split('\n') }}"
+      when: required_packages_file is defined and required_packages_file.content is defined
 
-    - name: Sammle Paketfakten
-      package_facts:
-
-    - name: Überprüfe installierte Pakete
+    - name: Initialize changed flag
       set_fact:
-        installed_packages: "{{ installed_packages | default([]) + [item] if item in ansible_facts.packages else installed_packages | default([]) }}"
-      loop: "{{ required_packages }}"
+        changes_made: false
 
-    - name: Zeige installierte Pakete an
-      debug:
-        msg: "Installierte Pakete: {{ installed_packages | join(', ') }}"
+    - name: Check and set HandleLidSwitch action
+      block:
+        - name: Check HandleLidSwitch setting
+          command: grep -i "HandleLidSwitch" /etc/systemd/logind.conf
+          register: lid_switch
+          ignore_errors: yes
 
-    - name: Lese die lokale sources.list Datei
-      slurp:
-        src: data/etc/apt/sources.list
-      delegate_to: localhost
-      register: local_sources_list
+        - name: Ensure HandleLidSwitch is set to poweroff
+          lineinfile:
+            path: /etc/systemd/logind.conf
+            regexp: "^HandleLidSwitch="
+            line: "HandleLidSwitch=poweroff"
+          when: lid_switch.stdout is defined and 'HandleLidSwitch=poweroff' not in lid_switch.stdout
+          notify: Restart systemd-logind
+          register: lid_switch_change
 
-    - name: Lese die remote sources.list Datei
-      slurp:
-        src: /etc/apt/sources.list
-      register: remote_sources_list
+      when: lid_switch is defined and lid_switch.stdout is defined
 
-    - name: Vergleiche die sources.list Dateien
+    - name: Set changes_made if lid_switch was changed
       set_fact:
-        sources_list_match: "{{ local_sources_list.content | b64decode == remote_sources_list.content | b64decode }}"
+        changes_made: true
+      when: lid_switch_change is changed
 
-    - name: Zeige das Ergebnis des Vergleichs der sources.list Dateien an
-      debug:
-        msg: >
-          {% if sources_list_match %}
-            Die sources.list Dateien stimmen überein.
-          {% else %}
-            Die sources.list Dateien stimmen NICHT überein.
-          {% endif %}
+    - name: Check and configure WLAN auto connection
+      block:
+        - name: Check WLAN auto connection setting
+          command: grep -i "auto" /etc/network/interfaces
+          register: wifi_auto
+          ignore_errors: yes
 
+        - name: Ensure WLAN is set to auto connect
+          lineinfile:
+            path: /etc/network/interfaces
+            regexp: "^auto wlan0"
+            line: "auto wlan0"
+          when: wifi_auto.stdout is defined and 'auto wlan0' not in wifi_auto.stdout
+          register: wlan_change
 
-    - name: Erstelle CSV-Eintrag für den Host
+      when: wifi_auto is defined and wifi_auto.stdout is defined
+
+    - name: Set changes_made if WLAN was changed
       set_fact:
-        csv_entry: >
-          {{ inventory_hostname }},
-          {{ var_usage }},
-          {{ 'active' if nm_status.stdout == 'active' else 'inactive' }},
-          {{ installed_packages | join(', ') }},
-          {{ 'poweroff' if lid_switch.stdout == 'HandleLidSwitch=poweroff' else lid_switch.stdout }},
-          {{ 'auto' if 'auto wlan0' in wifi_auto.stdout else 'manual' }},
-          {{ 'configurable' if apt_update_result.rc == 0 else 'not configurable' }},
-          {{ sources_list_match }}
+        changes_made: true
+      when: wlan_change is changed
 
-    - name: Schreibe CSV-Eintrag in Datei
-      lineinfile:
-        path: /tmp/results.csv
-        line: "{{ csv_entry }}"
-        create: yes
-        state: present
-      delegate_to: localhost
+    - name: Check and ensure NetworkManager is active
+      block:
+        - name: Check NetworkManager status
+          command: systemctl is-active NetworkManager
+          register: nm_status
+          ignore_errors: yes
+
+        - name: Start NetworkManager if inactive
+          service:
+            name: NetworkManager
+            state: started
+          when: nm_status.stdout is defined and nm_status.stdout != 'active'
+          register: nm_change
+
+      when: nm_status is defined and nm_status.stdout is defined
+
+    - name: Set changes_made if NetworkManager was changed
+      set_fact:
+        changes_made: true
+      when: nm_change is changed
+
+    - name: Run apt update and check result
+      block:
+        - name: Run apt update
+          command: apt update
+          register: apt_update_result
+          ignore_errors: yes
+
+        - name: Install missing packages
+          apt:
+            name: "{{ item }}"
+            state: present
+          loop: "{{ required_packages | select('string') | map('trim') | select('match', '.+') }}"
+          when: apt_update_result is defined and apt_update_result is not none and apt_update_result.failed is not defined
+          register: apt_change
+
+      when: apt_update_result is defined and apt_update_result is not none and apt_update_result.failed is not defined
+
+    - name: Set changes_made if packages were installed
+      set_fact:
+        changes_made: true
+      when: apt_change is changed
+
+    - name: Compare local and remote sources.list
+      block:
+        - name: Load local sources.list
+          slurp:
+            src: data/etc/apt/sources.list
+          delegate_to: localhost
+          register: local_sources_list
+
+        - name: Load remote sources.list
+          slurp:
+            src: /etc/apt/sources.list
+          register: remote_sources_list
+
+        - name: Backup remote sources.list if different
+          copy:
+            src: /etc/apt/sources.list
+            dest: "{{ backup_dir }}/etc/apt/sources.list.{{ timestamp }}"
+          when: local_sources_list.content is defined and remote_sources_list.content is defined and local_sources_list.content | b64decode != remote_sources_list.content | b64decode
+
+
+        - name: Ensure sources.list match
+          copy:
+            content: "{{ local_sources_list.content | b64decode }}"
+            dest: /etc/apt/sources.list
+          when: local_sources_list.content is defined and remote_sources_list.content is defined and local_sources_list.content | b64decode != remote_sources_list.content | b64decode
+          register: sources_list_change
+
+      when: local_sources_list.content is defined and remote_sources_list.content is defined
+
+    - name: Set changes_made if sources.list was changed
+      set_fact:
+        changes_made: true
+      when: sources_list_change is changed
+
+    - name: Create CSV report entry
+      block:
+      - name: Set CSV entry
+        set_fact:
+          csv_entry: >
+            {{ inventory_hostname }},
+            {{ 'active' if nm_status is defined and nm_status.stdout is defined and nm_status.stdout == 'active' else 'inactive' }},
+            {{ 'poweroff' if lid_switch is defined and lid_switch.stdout is defined and 'HandleLidSwitch=poweroff' in lid_switch.stdout else lid_switch.stdout if lid_switch is defined and lid_switch.stdout is defined else 'undefined' }},
+            {{ 'auto' if wifi_auto is defined and wifi_auto.stdout is defined and 'auto wlan0' in wifi_auto.stdout else 'manual' }},
+            {{ 'configurable' if apt_update_result is defined and apt_update_result is mapping and apt_update_result.failed is not defined else 'not configurable' }},
+            {{ 'match' if local_sources_list is defined and remote_sources_list is defined and local_sources_list.content is defined and remote_sources_list.content is defined and local_sources_list.content | b64decode == remote_sources_list.content | b64decode else 'no match' }}
+            
+      - name: Write CSV entry to file
+        lineinfile:
+          path: /tmp/results.csv
+          line: "{{ csv_entry }}"
+          create: yes
+          state: present
+        delegate_to: localhost
+      
+    - name: Reboot or shutdown based on changes
+      block:
+        - name: Reboot the system if changes were made
+          command: shutdown -r now
+          when: changes_made
+
+        - name: Shutdown the system if no changes were made
+          command: shutdown now
+          when: not changes_made
+
+  handlers:
+    - name: Restart systemd-logind
+      service:
+        name: systemd-logind
+        state: restarted
