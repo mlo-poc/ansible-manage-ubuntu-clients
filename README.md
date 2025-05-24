@@ -10,8 +10,13 @@ automatisieren.
 
 ## Projektstruktur
 Das Projekt ist in verschiedene Verzeichnisse und Dateien unterteilt,
-die jeweils spezifische Funktionen und Aufgaben erfüllen. Hier ist
-eine Übersicht über die Struktur:
+die jeweils spezifische Funktionen und Aufgaben erfüllen. In einer
+künftigen Überarbeitung sollen die Playbooks auf Basis von
+[roles](https://docs.ansible.com/ansible/latest/getting_started/basic_concepts.html#roles)
+stärker modularisiert
+werden.   
+Hier ist
+eine Übersicht über die aktuelle Struktur:
 
 ### Hauptverzeichnis
 - **.git**: Dieses Verzeichnis enthält die Versionskontrollinformationen für das Projekt.
@@ -27,8 +32,8 @@ eine Übersicht über die Struktur:
 
 - **packages/**: Dieses Verzeichnis enthält Paketdateien, die für die Installation erforderlich sind, z.B. `TigerJython.tar.gz`.
 
-- **vorlagen/**: Enthält Vorlagen, die ich von einem anderen, ähnlich
-  gelagerten Projekt geklaut habe.
+- **vorlagen/**: Enthält Vorlagen, die ich von einem anderen, [ähnlich
+  gelagerten Projekt](https://github.com/feschoppe/ansible-manage-ubuntu-clients) geklaut habe.
 
 ### Wichtige Dateien
 - **ansible.cfg**: Die Konfigurationsdatei für Ansible, die globale Einstellungen definiert.
