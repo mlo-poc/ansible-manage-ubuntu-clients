@@ -1,7 +1,9 @@
 # Projekt: LFS-Ansible
 
 LFS-Ansible wurde erstellt um die Verwaltung und Konfiguration von
-Linux-Systemen in der LFS zu automatisieren. Ansible ist ein
+Linux-Systemen in der [LFS}(https://www.liebfrauenschule.de/) zu
+automatisieren. [Ansible](https://docs.ansible.com/ansible/latest/index.html)
+ist ein 
 leistungsstarkes Open-Source-Tool, das es ermöglicht, Systeme zu
 konfigurieren, Software zu installieren und Aufgaben zu
 automatisieren.
