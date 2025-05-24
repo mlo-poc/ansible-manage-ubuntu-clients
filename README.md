@@ -102,5 +102,10 @@ ansible-playbook -f 33 <playbook-name>.yml -e "target_group=INFacerLAN"
 Der Mechanismus zur Angabe von Hostgruppen und zur Parallelisierung
 ist für alle Playbooks anwendbar und hilft dabei, die Ausführung
 effizient und zielgerichtet zu gestalten. Einige Playbooks könnten
-diesen Mechanismus noch nicht vollständig implementiert haben, was als
-zukünftige Verbesserung vorgesehen ist. 
+diesen Mechanismus noch nicht vollständig implementiert haben.    
+Suche nach 
+```YAML
+  vars:
+    target_group: "{{ target_group | default('INFacerWLAN') }}"
+  hosts: "{{ target_group }}"
+```
