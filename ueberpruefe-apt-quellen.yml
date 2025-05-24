@@ -1,0 +1,53 @@
+---
+- name: Überprüfen der APT-Quellen
+  vars:
+    target_group: "{{ target_group | default('INFacerWLAN') }}"
+    local_sources_file: "data/etc/apt/sources.list"
+    new_sources_file: "/tmp/missing_sources.list"
+  hosts: "{{ target_group }}"
+  remote_user: root
+  gather_facts: yes
+
+  tasks:
+    - name: Lokale sources.list einlesen
+      slurp:
+        src: "{{ local_sources_file }}"
+      register: local_sources_content
+      delegate_to: localhost
+
+    - name: Quellen dekodieren
+      set_fact:
+        local_sources: "{{ local_sources_content.content | b64decode | split('\n') | map('trim') | list }}"
+
+    - name: Aktive APT-Quellen auf dem Zielsystem abfragen
+      command: apt-cache policy
+      register: apt_policy_output
+
+    - name: Aktive Quellen extrahieren
+      set_fact:
+        remote_sources: "{{ apt_policy_output.stdout_lines | select('search', 'http') | map('regex_replace', '^(\newlines*\newlineS+\newlines+)(.*)$', '\newline2') | list }}"
+
+    - name: Fehlende Quellen identifizieren
+      set_fact:
+        missing_sources: "{{ local_sources | difference(remote_sources) }}"
+      
+    - name: Berichte über fehlende Quellen
+      debug:
+        msg: "Fehlende Quellen: {{ missing_sources }}"
+      when: missing_sources | length > 0
+
+    - name: Erstelle eine neue sources.list mit fehlenden Quellen
+      copy:
+        content: "{{ missing_sources | join('\n') }}"
+        dest: "{{ new_sources_file }}"
+      when: missing_sources | length > 0
+
+    - name: Berichte über die erstellte Datei
+      debug:
+        msg: "Die Datei mit fehlenden Quellen wurde erstellt: {{ new_sources_file }}"
+      when: missing_sources | length > 0
+
+    - name: Bestätigen, dass alle lokalen Quellen vorhanden sind
+      fail:
+        msg: "Die folgenden Quellen fehlen auf dem Zielsystem: {{ missing_sources }}"
+      when: missing_sources | length > 0
