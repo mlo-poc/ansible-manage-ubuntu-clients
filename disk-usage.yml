@@ -1,0 +1,93 @@
+---
+- name: Gather Disk Information
+  vars:
+    target_group: "{{ target_group | default('INFacerWLAN') }}"
+  hosts: "{{ target_group }}"
+  remote_user: root
+  gather_facts: yes
+  tasks:
+    - name: Check available disk space
+      set_fact:
+        disk_status:
+          root: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | default(0) }}"
+          var: "{{ ansible_mounts | selectattr('mount', 'equalto', '/var') | map(attribute='size_available') | first | default(0) }}"
+          root_total: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_total') | first | default(0) }}"
+          var_total: "{{ ansible_mounts | selectattr('mount', 'equalto', '/var') | map(attribute='size_total') | first | default(0) }}"
+
+    - name: Evaluate disk usage
+      set_fact:
+        root_status: >
+          {% set root_usage = ( ( 1 - disk_status.root / disk_status.root_total ) * 100) | float | round(1) %}
+          {% if root_usage > 90 %}
+            kritisch ({{ root_usage }}% )
+          {% elif root_usage > 80 %}
+            warnung ({{ root_usage }}% )
+          {% else %}
+            unkritisch ({{ root_usage }}% )
+          {% endif %}
+        var_status: >
+          {% set var_usage = ( ( 1 - disk_status.var / disk_status.var_total ) * 100) | float | round(1) %}
+          {% if var_usage > 90 %}
+            kritisch ({{ var_usage }}% )
+          {% elif var_usage > 80 %}
+            warnung ({{ var_usage }}% )
+          {% else %}
+            unkritisch ({{ var_usage }}% )
+          {% endif %}
+
+    - name: Display disk usage status
+      debug:
+        msg: >
+          Host: {{ inventory_hostname }}
+          Root Partition: {{ root_status }}
+          Var Partition: {{ var_status }}
+
+    - name: Clean up /var partition if critical or warning
+      block:
+        - name: Remove old log files in /var
+          file:
+            path: "/var/log/*.log"
+            state: absent
+          register: log_cleanup
+
+        - name: Remove temporary files in /var
+          file:
+            path: "/var/tmp/*"
+            state: absent
+          register: tmp_cleanup
+
+        - name: Remove cache files
+          command: apt-get clean
+
+        - name: Remove unnecessary packages
+          command: apt-get autoremove -y
+      when: "'kritisch' in var_status or 'warnung' in var_status"
+
+    - name: Clean up /var partition if warning
+      block:
+        - name: Remove old log files in /var
+          file:
+            path: "/var/log/*.log"
+            state: absent
+          register: log_cleanup_warning
+
+        - name: Remove temporary files in /var
+          file:
+            path: "/var/tmp/*"
+            state: absent
+          register: tmp_cleanup_warning
+      when: "'warnung' in var_status"
+
+    - name: Determine action based on cleanup
+      set_fact:
+        reboot_needed: "{{ log_cleanup.changed or tmp_cleanup.changed or log_cleanup_warning.changed or tmp_cleanup_warning.changed }}"
+
+    - name: Reboot or shutdown based on cleanup
+      block:
+        - name: Reboot the system
+          reboot:
+          when: reboot_needed
+
+        - name: Shutdown the system
+          command: shutdown now
+          when: not reboot_needed
