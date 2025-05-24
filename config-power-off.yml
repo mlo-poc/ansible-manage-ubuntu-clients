@@ -6,30 +6,14 @@
   remote_user: root
   gather_facts: yes
   tasks:
-    - name: Überprüfen, ob die aktuelle logind.conf die richtigen Konfigurationen enthält
-      command: grep -E 'HandlePowerKey=poweroff|HandleLidSwitch=ignore|HandleSuspendKey=ignore|HandleHibernateKey=ignore|IdleAction=ignore|PowerKeyIgnoreInhibited=no|LidSwitchIgnoreInhibited=no' /etc/systemd/logind.conf
-      register: logind_conf_check
-      failed_when: logind_conf_check.rc != 0
-      changed_when: false
-
-    - name: Überprüfen, ob die logind.conf vollständig korrekt ist
-      set_fact:
-        config_correct: "{{ logind_conf_check.stdout_lines | length == 7 }}"
-
-    - name: Erstellen der minimalen logind.conf, wenn die Konfiguration nicht korrekt ist
+    - name: Kopieren der logind.conf
       copy:
+        src: data/etc/systemd/logind.conf
         dest: /etc/systemd/logind.conf
-        content: |
-          [Login]
-          HandlePowerKey=poweroff
-          HandleLidSwitch=ignore
-          HandleSuspendKey=ignore
-          HandleHibernateKey=ignore
-          IdleAction=ignore
-          PowerKeyIgnoreInhibited=no
-          LidSwitchIgnoreInhibited=no
+        owner: root
+        group: root
+        mode: '0644'
       register: logind_conf_update
-      when: not config_correct
 
     - name: Überprüfen der dconf-Berechtigungen
       command: ls -altR /etc/dconf
@@ -51,6 +35,9 @@
       copy:
         src: data/etc/dconf/db/local.d/00-power-settings
         dest: /etc/dconf/db/local.d/00-power-settings
+        owner: root
+        group: root
+        mode: '0644'
 
     - name: Zurücksetzen der Benutzereinstellungen für power
       command: dconf reset -f /org/cinnamon/settings-daemon/plugins/power/
@@ -61,23 +48,33 @@
       copy:
         src: data/etc/local.bin/shutdown-lid.sh
         dest: /usr/local/bin/shutdown-lid.sh
+        owner: root
+        group: root
         mode: '0755'
 
     - name: Kopieren des Setup-Skripts
       copy:
         src: data/etc/local.bin/setup-power-settings.sh
         dest: /usr/local/bin/setup-power-settings.sh
+        owner: root
+        group: root
         mode: '0755'
 
     - name: Kopieren des systemd-Dienstes für das Shutdown-Skript
       copy:
         src: data/etc/systemd/system/lid-shutdown.service
         dest: /etc/systemd/system/lid-shutdown.service
+        owner: root
+        group: root
+        mode: '0644'
 
     - name: Kopieren des systemd-Dienstes für das Setup-Skript
       copy:
         src: data/etc/systemd/system/setup-power-settings.service
         dest: /etc/systemd/system/setup-power-settings.service
+        owner: root
+        group: root
+        mode: '0644'
 
     - name: Aktivieren des systemd-Dienstes für das Shutdown-Skript
       command: systemctl enable lid-shutdown.service
@@ -97,3 +94,4 @@
     - name: Herunterfahren des Systems, wenn keine Änderungen erforderlich sind
       command: shutdown now
       when: not logind_conf_update.changed
+
