@@ -95,7 +95,9 @@ ansible-playbook -f 33 <playbook-name>.yml -e "target_group=INFacerLAN"
   ermöglicht es, spezifische Gruppen von Hosts gezielt anzusprechen
   und zu konfigurieren. Diese Flexibilität ist besonders nützlich,
   wenn du mehrere Gruppen von Maschinen mit unterschiedlichen
-  Konfigurationen verwalten möchtest. 
+  Konfigurationen verwalten möchtest.   
+  Die möglichen `target_group`s sind in `data/hosts`
+  definiert. (s. auch `ansible.cfg`: `inventory = data/hosts`)
 
 Der Mechanismus zur Angabe von Hostgruppen und zur Parallelisierung
 ist für alle Playbooks anwendbar und hilft dabei, die Ausführung
