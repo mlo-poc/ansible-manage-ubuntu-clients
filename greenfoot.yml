@@ -1,5 +1,8 @@
 ---
-- hosts: INFacerWLAN
+- name: Greenfoot
+  vars:
+    target_group: "{{ target_group | default('INFacerWLAN') }}"
+  hosts: "{{ target_group }}"
   remote_user: root
   tasks:
   - name: Install greenfoot from the internet
