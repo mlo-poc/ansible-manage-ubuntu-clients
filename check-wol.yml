@@ -1,0 +1,81 @@
+---
+- name: Überprüfen der Wake-on-LAN-Konfiguration
+  vars:
+    target_group: "{{ target_group | default('INFacerWLAN') }}"
+  hosts: "{{ target_group }}"
+  remote_user: root
+  gather_facts: yes
+  tasks:
+    - name: Installieren von ethtool, falls nicht vorhanden
+      apt:
+        name: ethtool
+        state: present
+
+    - name: Ermitteln der Netzwerkschnittstelle
+      command: ip -o link show | awk -F': ' '{print $2}'
+      register: interfaces
+
+    - name: Setzen der Wake-on-LAN-Einstellungen
+      command: ethtool -s {{ item }} wol g
+      loop: "{{ interfaces.stdout_lines }}"
+      when: item is match('^en|^eth')  # Nur Ethernet-Interfaces
+
+    - name: Erstellen der systemd-Netzwerkkonfigurationsdatei für WoL
+      copy:
+        dest: /etc/systemd/network/50-wired.link
+        content: |
+          [Match]
+          MACAddress={{ item }}
+
+          [Link]
+          NamePolicy=kernel database onboard slot path
+          MACAddressPolicy=persistent
+          WakeOnLan=magic
+      loop: "{{ interfaces.stdout_lines }}"
+      when: item is match('^en|^eth')  # Nur Ethernet-Interfaces
+
+    - name: Anpassen der /etc/default/halt, um das Deaktivieren der Netzwerkschnittstellen zu verhindern
+      lineinfile:
+        path: /etc/default/halt
+        regexp: '^NETDOWN='
+        line: 'NETDOWN=no'
+        state: present
+
+    - name: Überprüfen der Wake-on-LAN-Einstellungen
+      command: ethtool {{ item }}
+      register: wol_status
+      changed_when: false
+      failed_when: false
+      loop: "{{ interfaces.stdout_lines }}"
+      when: item is match('^en|^eth')  # Nur Ethernet-Interfaces
+
+    - name: Ausgabe des Wake-on-LAN-Status
+      debug:
+        msg: "Wake-on-LAN für {{ item }} ist {{ 'aktiviert' if 'g' in wol_status.results[loop.index0].stdout else 'deaktiviert' }}."
+      loop: "{{ interfaces.stdout_lines }}"
+      when: item is match('^en|^eth')  # Nur Ethernet-Interfaces
+
+    - name: Überprüfen, ob WoL aktiviert ist
+      assert:
+        that:
+          - 'g' in wol_status.results[loop.index0].stdout
+      loop: "{{ interfaces.stdout_lines }}"
+      when: item is match('^en|^eth')  # Nur Ethernet-Interfaces
+
+    - name: Überprüfen der WoL-Einstellungen im BIOS
+      command: dmidecode -t 0
+      register: bios_info
+
+    - name: Ausgabe der BIOS-Informationen
+      debug:
+        var: bios_info.stdout_lines
+
+  post_tasks:
+    - name: Neustart des Systems, wenn Änderungen vorgenommen wurden
+      reboot:
+      when: wol_status.changed
+
+    - name: Herunterfahren des Systems, wenn keine Änderungen erforderlich sind
+      command: shutdown now
+      when: not wol_status.changed
+
