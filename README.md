@@ -115,4 +115,24 @@ Suche nach
   hosts: "{{ target_group }}"
 ```
 
+## Verwendete ansible Mechanismen
+
+### Reboot or shutdown
+
+Die meisten Playbooks enthalten einen `post_tasks` Abschnitt, der den
+Zielrechner durchbootet, wenn Änderungen durchgeführt wurden oder
+herunterfährt, wenn keine Änderungen notwendig waren.  
+Dies ist vor allem für unsere Schüler-Laptops sinnvoll.
+
+```YAML
+  post_tasks:
+    - name: Neustart des Systems, wenn Änderungen vorgenommen wurden
+      reboot:
+      when: wol_status.changed
+
+    - name: Herunterfahren des Systems, wenn keine Änderungen erforderlich sind
+      command: shutdown now
+      when: not wol_status.changed
+```
+
 [^1]: Es ist mit ansible auch möglich [Windows](https://docs.ansible.com/ansible/latest/os_guide/intro_windows.html) zu steuern. Das wird vermutlich ein Thema für die Zukunft, wenn wir unsere IT [virtualisieren](https://docs.ansible.com/ansible/latest/collections/community/general/proxmox_module.html).
